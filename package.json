@@ -1,0 +1,52 @@
+{
+  "name": "cassette-re-wired",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/electron/main.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"tsx watch src/index.ts\" \"vite\"",
+    "start": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json",
+    "test": "find src -name '*.test.ts' | xargs node --import tsx --test",
+    "electron:dev": "npm run build && electron .",
+    "electron:build": "npm run build && electron-builder --mac --win"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.10.2",
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  },
+  "build": {
+    "appId": "com.cassette-re-wired.app",
+    "productName": "cassette re-wired",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.music"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
