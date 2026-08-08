@@ -107,7 +107,11 @@ point. Enable the full upscale only after listening to the denoise-only result.
 
 Developed and tested on macOS with Apple Silicon; a Windows build is also produced
 (see [ADR 0001](docs/adr/0001-local-web-app-with-electron-shell.md)) but has seen less
-real-world use. FFmpeg comes from the system package manager on macOS:
+real-world use.
+
+### Pipeline run (`npm run dev` / `npm run electron:dev`, actually processing audio)
+
+FFmpeg comes from the system package manager on macOS:
 
 ```bash
 brew install ffmpeg
@@ -153,7 +157,17 @@ Notes on the Python tools (the app handles both automatically):
 Run `GET /preflight` (or check the UI) after setup — it validates FFmpeg, the venv,
 and the `resemble-enhance` binary and reports exactly what's missing.
 
-Node 22+ is required for the server and UI.
+### Dev server (`npm run dev`) and Electron dev (`npm run electron:dev`)
+
+Node 22+ is required for the server and UI. No extra native toolchain — `npm install`
+then `npm run dev` is enough to get the browser app up; you still need the pipeline
+prerequisites above to actually run a file through it.
+
+### Electron build (`npm run electron:build`)
+
+`electron-builder` rebuilds native modules for packaging and needs a plain
+**`python3` on `PATH`** — any recent version, unrelated to the pinned
+resemble-enhance/DeepFilterNet venv above.
 
 ## Screenshots
 
