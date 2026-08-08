@@ -1,6 +1,13 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, Menu } from "electron";
 import { startServer } from "../src/index.js";
 import { cancelAll } from "../src/process/registry.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// macOS packages the app icon via icon.icns; this file only matters for the
+// window/taskbar icon on Windows and Linux, and during `electron:dev`.
+const appIconPath = path.join(__dirname, "../../build/icon.png");
 
 // Set by `electron:dev` so the window points at Vite's dev server (HMR) instead
 // of the built renderer bundle Express serves in production.
@@ -26,6 +33,7 @@ async function createWindow(): Promise<void> {
     width: 900,
     height: 1000,
     title: "cassette re-wired",
+    icon: appIconPath,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

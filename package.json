@@ -43,10 +43,12 @@
     ],
     "mac": {
       "target": "dmg",
-      "category": "public.app-category.music"
+      "category": "public.app-category.music",
+      "icon": "build/icon.icns"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.png"
     }
   }
 }
