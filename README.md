@@ -107,7 +107,10 @@ point. Enable the full upscale only after listening to the denoise-only result.
 
 Developed and tested on macOS with Apple Silicon; a Windows build is also produced
 (see [ADR 0001](docs/adr/0001-local-web-app-with-electron-shell.md)) but has seen less
-real-world use.
+real-world use. The full flow — dev server, Electron app, and pipeline run through to
+before/after playback — has been tested successfully end-to-end on an Apple M4 Pro
+macOS machine. It has not been verified on Intel Macs or Windows — issues and
+contributions covering those are welcome.
 
 ### Pipeline run (`npm run dev` / `npm run electron:dev`, actually processing audio)
 
