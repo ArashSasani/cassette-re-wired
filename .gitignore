@@ -2,6 +2,7 @@ docs/experiments
 node_modules
 dist
 release
+build-cache
 .DS_Store
 npm-debug.log*
 .env

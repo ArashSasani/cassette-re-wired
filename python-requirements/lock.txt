@@ -1,0 +1,22 @@
+# Python dependencies for the venv bundled into the packaged Electron app —
+# installed by `pip install -r` in scripts/build-python-venv.mjs during
+# `npm run electron:build`'s `predist` step. Not used by `npm run dev` /
+# `electron:dev`; those read whatever venv CASSETTE_PYTHON_VENV points at, set
+# up manually per the README's `uv venv` + `uv pip install` instructions.
+#
+# NOT a real lock file despite the name: only the two top-level packages are
+# listed, unpinned — pip resolves torch and every other transitive dependency
+# to whatever's current on PyPI at build time. Two consequences:
+#   - `npm run electron:build` output is NOT reproducible across builds.
+#   - A silent upstream break (e.g. a resemble-enhance release bump that pulls
+#     an incompatible torch) surfaces at build time, not from a version diff.
+# To make this a true lock, pin every version explicitly (e.g. by running
+# `pip freeze` inside a built venv — see docs/adr/0005-pinned-python-venv.md —
+# and pasting the full output here), then bump it as a deliberate, tested step
+# whenever resemble-enhance/DeepFilterNet/torch need to move.
+#
+# On Windows, scripts/build-python-venv.mjs installs against the CPU-only torch
+# index (https://download.pytorch.org/whl/cpu) to avoid pulling CUDA wheels the
+# target machine may not have a driver for; macOS wheels already include MPS.
+resemble-enhance
+deepfilternet

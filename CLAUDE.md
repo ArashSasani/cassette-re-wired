@@ -32,7 +32,8 @@ executable paths are platform-aware — `bin/` on POSIX, `Scripts/` with `.exe` 
 Windows.
 
 API surface (`src/server.ts`): `GET /preflight`, `POST /runs` (multipart `source`
-field), `GET /runs/:id`, `GET /runs/:id/source-audio`, `GET /runs/:id/output-audio`,
+field), `GET /runs/:id`, `GET /runs/:id/source-audio`,
+`GET /runs/:id/sample-source-audio`, `GET /runs/:id/output-audio`,
 `POST /runs/:id/sample`, `POST /runs/:id/full`, `POST /runs/:id/cancel`. Static
 assets are the Vite-built renderer bundle (`dist/renderer/`, built from
 `src/renderer/`), served at `/`.
@@ -73,9 +74,8 @@ from an app-owned pinned 3.10/3.11 virtualenv invoked by absolute path (ADR 0005
 - Fine enhancer knobs (`chunk_seconds`, `chunks_overlap`, `nfe`, `lambd`, `tau`) are
   **library-only**. The CLI exposes just `resemble_enhance <in> <out>` and
   `--denoise_only`. Needing any of them is the trigger to revisit ADR 0002 — but see
-  the addendum in [ADR 0002](docs/adr/0002-shell-orchestration.md): `lambd` was
-  already tested directly against the library and didn't fix speech quality, so the
-  sidecar hasn't been built.
+  `docs/experiments/lambd-tuning/`: `lambd` was already tested directly against the
+  library and didn't fix speech quality, so the sidecar hasn't been built.
 
 ## Implementation notes
 

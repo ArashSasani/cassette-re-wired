@@ -10,14 +10,14 @@ remote GPU anywhere in this project — everything runs on one personal machine.
 
 ## Decision
 
-Spawn `ffmpeg` and `resemble_enhance` with `child_process.spawn` and read their
+Spawn `ffmpeg` and `resemble-enhance` with `child_process.spawn` and read their
 output. **No Python glue, and no networked service boundary** — nothing here needs
 to be remoteable.
 
 ## Expiry trigger
 
 This decision has a known end date. The CLI exposes only
-`resemble_enhance <in> <out>` and `--denoise_only`. The moment we need
+`resemble-enhance <in> <out>` and `--denoise_only`. The moment we need
 `chunk_seconds`, `chunks_overlap`, `nfe`, `lambd`, or `tau` (all library-only),
 introduce a Python sidecar over stdio. Until then the CLI defaults are fine.
 

@@ -1,12 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Config } from "../config.js";
-import { deepFilterBinPath, resembleEnhanceBinPath } from "../config.js";
+import { deepFilterBinPath, packagedPythonBinPath, resembleEnhanceBinPath } from "../config.js";
 import { runDir, sourcePath, updateManifest } from "../runs/runStore.js";
 import type { Route, RunMode, SampleWindow, StageStatus } from "../runs/types.js";
 import { buildDecodeArgs, routeBFilters } from "../stages/ffmpegDecode.js";
 import { buildLoudnormArgs } from "../stages/loudnorm.js";
-import { buildEnhanceInvocation } from "../stages/resembleEnhance.js";
+import { buildEnhanceInvocation, type Invocation } from "../stages/resembleEnhance.js";
 import { buildDeepFilterInvocation } from "../stages/deepFilter.js";
 import { FfmpegProgressTracker, fractionFromSnapshot } from "../process/ffmpegProgress.js";
 import { parseTqdmPercent } from "../process/enhancerProgress.js";
@@ -67,6 +67,27 @@ function ffmpegProgressLine(totalDurationSeconds: number) {
   };
 }
 
+/**
+ * The dev venv's console scripts (resemble-enhance, deepFilter) work fine as direct
+ * executables — the venv never moves after the developer creates it. The packaged
+ * app's bundled Python is not a venv (see scripts/build-python-venv.mjs) and has no
+ * console-script layer, so it must be invoked as `python3 -m <module>` through the
+ * interpreter directly instead. This swaps in the module-based invocation whenever
+ * config.packaged is set, and leaves the dev invocation (already built by the
+ * caller) untouched otherwise.
+ */
+function withPackagedPythonModule(
+  config: Config,
+  devInvocation: Invocation,
+  moduleName: string,
+): Invocation {
+  if (!config.packaged || !config.pythonHome) return devInvocation;
+  return {
+    command: packagedPythonBinPath(config.pythonHome),
+    args: ["-m", moduleName, ...devInvocation.args],
+  };
+}
+
 /** Fails the run's remaining pending stages so the manifest reflects where it actually stopped. */
 async function markRemainingStages(
   runsRoot: string,
@@ -89,7 +110,10 @@ export async function runPipeline(
   const dir = runDir(runsRoot, runId);
   const startedAt = Date.now();
 
-  const sourceDurationSeconds = await probeDurationSeconds(sourcePath(runsRoot, runId));
+  const sourceDurationSeconds = await probeDurationSeconds(
+    sourcePath(runsRoot, runId),
+    config.ffprobePath,
+  );
 
   // Clamp sample window to the actual source length: if the offset is past
   // the end, ffmpeg produces an empty WAV and the enhancer crashes on zero chunks.
@@ -151,7 +175,7 @@ export async function runPipeline(
     runsRoot,
     runId,
     stageName: "decode",
-    command: "ffmpeg",
+    command: config.ffmpegPath ?? "ffmpeg",
     args: decodeArgs,
     onProgressLine: ffmpegProgressLine(audioDurationSeconds),
   });
@@ -165,11 +189,25 @@ export async function runPipeline(
   // 2. (Route B only) dedicated denoise
   if (options.route === "B") {
     await fs.mkdir(deepFilterOutDir(dir), { recursive: true });
-    const deepFilterInvocation = buildDeepFilterInvocation({
+    const deepFilterArgs = buildDeepFilterInvocation({
       binPath: deepFilterBinPath(config.pythonVenvPath),
       inputPath: prepWavPath(dir),
       outputDir: deepFilterOutDir(dir),
-    });
+    }).args;
+    const deepFilterInvocation = withPackagedPythonModule(
+      config,
+      {
+        command: deepFilterBinPath(config.pythonVenvPath),
+        // Packaged builds point DeepFilterNet at the model bundled at build time
+        // instead of letting it call its own network-fetching maybe_download_model()
+        // (see scripts/build-python-venv.mjs) — no network dependency at runtime.
+        args:
+          config.packaged && config.deepFilterModelDir
+            ? ["--model-base-dir", config.deepFilterModelDir, ...deepFilterArgs]
+            : deepFilterArgs,
+      },
+      "df.enhance",
+    );
     const denoiseResult = await runStage({
       runsRoot,
       runId,
@@ -187,13 +225,17 @@ export async function runPipeline(
   // 3. denoise + upscale
   await fs.mkdir(enhanceOutDir(dir), { recursive: true });
   const enhanceDevice = resolveEnhanceDevice(options.device, options.denoiseOnly);
-  const enhanceInvocation = buildEnhanceInvocation({
-    binPath: resembleEnhanceBinPath(config.pythonVenvPath),
-    inputDir: enhanceInputDir(dir, options.route),
-    outputDir: enhanceOutDir(dir),
-    denoiseOnly: options.denoiseOnly,
-    device: enhanceDevice,
-  });
+  const enhanceInvocation = withPackagedPythonModule(
+    config,
+    buildEnhanceInvocation({
+      binPath: resembleEnhanceBinPath(config.pythonVenvPath),
+      inputDir: enhanceInputDir(dir, options.route),
+      outputDir: enhanceOutDir(dir),
+      denoiseOnly: options.denoiseOnly,
+      device: enhanceDevice,
+    }),
+    "resemble_enhance.enhancer",
+  );
   const enhanceResult = await runStage({
     runsRoot,
     runId,
@@ -218,7 +260,7 @@ export async function runPipeline(
     runsRoot,
     runId,
     stageName: "loudnorm",
-    command: "ffmpeg",
+    command: config.ffmpegPath ?? "ffmpeg",
     args: loudnormArgs,
     onProgressLine: ffmpegProgressLine(audioDurationSeconds),
   });

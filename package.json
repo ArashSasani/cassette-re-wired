@@ -2,6 +2,7 @@
   "name": "cassette-re-wired",
   "version": "0.1.0",
   "license": "MIT",
+  "author": "Arash Sasani",
   "type": "module",
   "main": "dist/electron/main.js",
   "engines": {
@@ -14,7 +15,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json",
     "test": "find src -name '*.test.ts' | xargs node --import tsx --test",
     "electron:dev": "npm run build && electron .",
-    "electron:build": "npm run build && electron-builder --mac --win"
+    "predist": "node scripts/build-python-venv.mjs",
+    "electron:build": "npm run build && npm run predist && electron-builder"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -27,6 +29,8 @@
     "concurrently": "^9.1.0",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
+    "ffmpeg-static": "^5.2.0",
+    "ffprobe-static": "^3.1.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.3"
@@ -40,6 +44,11 @@
     "files": [
       "dist/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      { "from": "build-cache/python", "to": "python" },
+      { "from": "build-cache/bin", "to": "bin" },
+      { "from": "build-cache/models", "to": "models" }
     ],
     "mac": {
       "target": "dmg",
