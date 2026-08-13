@@ -29,7 +29,7 @@ Everything runs on one machine. No cloud, no accounts, no API keys.
 
 ## How it works
 
-The pipeline decodes the source MP3 once to lossless WAV, runs enhancement stages in
+The pipeline decodes the source file once to lossless WAV, runs enhancement stages in
 WAV, and only re-encodes to MP3 at final export — no quality is lost to intermediate
 re-encoding.
 
@@ -114,14 +114,11 @@ contributions covering those are welcome.
 
 ### Pipeline run (`npm run dev` / `npm run electron:dev`, actually processing audio)
 
-FFmpeg comes from the system package manager on macOS:
-
-```bash
-brew install ffmpeg
-```
-
-On Windows, install FFmpeg and make sure `ffmpeg`/`ffprobe` are on `PATH` (e.g. via
-[the FFmpeg builds site](https://www.gyan.dev/ffmpeg/builds/) or `winget install ffmpeg`).
+FFmpeg/ffprobe need no separate install — `npm install` pulls the
+[`ffmpeg-static`](https://www.npmjs.com/package/ffmpeg-static)/
+[`ffprobe-static`](https://www.npmjs.com/package/ffprobe-static) devDependencies, and
+`src/config.ts` uses those binaries by default on every platform. Override with
+`CASSETTE_FFMPEG`/`CASSETTE_FFPROBE` if you want a specific system install instead.
 
 The Python tools need a **pinned virtualenv on Python 3.10/3.11** — newer Python
 versions are incompatible with `resemble-enhance`'s dependency pins. See
@@ -162,15 +159,56 @@ and the `resemble-enhance` binary and reports exactly what's missing.
 
 ### Dev server (`npm run dev`) and Electron dev (`npm run electron:dev`)
 
-Node 22+ is required for the server and UI. No extra native toolchain — `npm install`
-then `npm run dev` is enough to get the browser app up; you still need the pipeline
-prerequisites above to actually run a file through it.
+Node 22+ is required for the server and UI. `npm install` then `npm run dev` is
+enough to get the browser app up, with FFmpeg/ffprobe already covered by
+`ffmpeg-static`/`ffprobe-static`; you still need the Python venv above to actually
+run a file through it.
 
 ### Electron build (`npm run electron:build`)
 
 `electron-builder` rebuilds native modules for packaging and needs a plain
 **`python3` on `PATH`** — any recent version, unrelated to the pinned
 resemble-enhance/DeepFilterNet venv above.
+
+`npm run electron:build` produces a **fully standalone app**: it bundles ffmpeg,
+ffprobe, a dedicated Python 3.11 install (resemble-enhance + DeepFilterNet + CPU
+torch), and **both models' weights**, so the installed app needs nothing from the
+prerequisites above at runtime — no system ffmpeg, no user-created venv, no
+network access, no git, no git-lfs. This only affects the build output; `npm run
+dev` and `npm run electron:dev` are unchanged and still use
+`ffmpeg-static`/`ffprobe-static` from npm and `~/.cassette-rewired/.venv`.
+
+A `predist` step (`scripts/build-python-venv.mjs`) downloads a standalone CPython
+interpreter, installs dependencies into it directly (not a venv — see the script's
+top comment for why), **prefetches both models' weights**, and stages ffmpeg/ffprobe
+under `build-cache/` before `electron-builder` packages it all via `extraResources`.
+Requirements, all on the **build machine only** — none of these are needed by the
+machine that later runs the packaged app:
+
+- **Network access, `git`, and `git-lfs`** — used once to prefetch
+  resemble-enhance's ~680 MB of model weights (`git clone` + `git lfs pull`).
+  Cached under `build-cache/weights-cache/` across builds, so only the very first
+  build on a given machine pays this cost; `rm -rf build-cache/weights-cache` forces
+  a fresh pull (e.g. after an upstream model update). DeepFilterNet's much smaller
+  (~8 MB) model comes over plain HTTPS, no git needed.
+- **Build on the machine matching your target.** `electron:build` packages the host's
+  own platform+arch only — there's no cross-compilation. To ship a macOS Apple
+  Silicon build, run it on an Apple Silicon Mac; for Intel macOS, an Intel Mac; for
+  Windows, a Windows x64 machine.
+- **Windows 32-bit (ia32) is not supported** — PyTorch publishes no ia32 Windows
+  wheels, so `scripts/build-python-venv.mjs` refuses to build one. Windows x64 only.
+- Regenerate `python-requirements/lock.txt` deliberately (not on every build) when
+  bumping resemble-enhance/DeepFilterNet/torch versions.
+- The macOS DMG is unsigned (no code signing/notarization) — this is a personal
+  testing tool, not a distributed product. Open it once via right-click → Open to
+  bypass Gatekeeper's first-launch check.
+- The DMG is large (~1.2 GB) because of the bundled weights — this is the deliberate
+  trade-off for zero runtime network/git dependency.
+
+Verified (2026-08-13): launched the packaged app directly with a stripped,
+`launchd`-style environment (`PATH=/usr/bin:/bin:/usr/sbin:/sbin`, no Homebrew, no
+pre-existing caches) and ran both Route A and Route B sample runs to completion with
+no network access and no `git` process spawned at any point.
 
 ## Screenshots
 

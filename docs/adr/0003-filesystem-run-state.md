@@ -13,13 +13,13 @@ per-file source record is needed, and resumable full runs are a nice-to-have.
 
 ```
 ~/.cassette-rewired/runs/<id>/
-  manifest.json      stage status, timings, options used
-  probe.json         ffprobe output for the source
-  source.mp3         copy of the input; the original is never touched
-  prep.wav           per-stage artifacts, wav throughout
-  enhanced.wav
-  final.mp3
-  previews/          see ADR 0004
+  manifest.json             stage status, timings, options used
+  source.mp3                copy of the input; the original is never touched
+  prep/audio.wav            decoded excerpt (sample) or full file — wav throughout
+  denoised/audio.wav        Route B only: DeepFilterNet output
+  enhanced/audio.wav        resemble-enhance output
+  sample-final.mp3 | final.mp3
+  previews/                 see ADR 0004
 ```
 
 No database, no ORM.

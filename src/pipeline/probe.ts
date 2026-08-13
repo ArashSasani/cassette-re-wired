@@ -4,7 +4,10 @@ import { buildDurationProbeArgs, parseDurationOutput } from "./ffprobeDuration.j
 
 const execFileAsync = promisify(execFile);
 
-export async function probeDurationSeconds(inputPath: string): Promise<number> {
-  const { stdout } = await execFileAsync("ffprobe", buildDurationProbeArgs(inputPath));
+export async function probeDurationSeconds(
+  inputPath: string,
+  ffprobePath: string = "ffprobe",
+): Promise<number> {
+  const { stdout } = await execFileAsync(ffprobePath, buildDurationProbeArgs(inputPath));
   return parseDurationOutput(stdout);
 }

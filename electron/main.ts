@@ -9,6 +9,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // window/taskbar icon on Windows and Linux, and during `electron:dev`.
 const appIconPath = path.join(__dirname, "../../build/icon.png");
 
+const EXE_SUFFIX = process.platform === "win32" ? ".exe" : "";
+
+// A packaged build bundles ffmpeg/ffprobe, a standalone Python install, and both
+// models' weights under resourcesPath (electron-builder extraResources), so the app
+// runs fully standalone — no host-installed ffmpeg, no user-created venv, no
+// network/git/git-lfs at runtime. scripts/build-python-venv.mjs does the actual
+// weight prefetching + patching at build time (see its module comment for why).
+// electron:dev leaves all of this untouched: app.isPackaged is false, so config.ts
+// falls back to its own dev-time defaults (ffmpeg-static/ffprobe-static,
+// ~/.cassette-rewired/.venv, DeepFilterNet's own network fetch + cache).
+if (app.isPackaged) {
+  process.env.CASSETTE_PACKAGED = "1";
+  process.env.CASSETTE_FFMPEG ??= path.join(process.resourcesPath, "bin", `ffmpeg${EXE_SUFFIX}`);
+  process.env.CASSETTE_FFPROBE ??= path.join(process.resourcesPath, "bin", `ffprobe${EXE_SUFFIX}`);
+  process.env.CASSETTE_PYTHON_HOME ??= path.join(process.resourcesPath, "python");
+  process.env.CASSETTE_DEEPFILTER_MODEL_DIR ??= path.join(process.resourcesPath, "models", "DeepFilterNet3");
+}
+
 // Set by `electron:dev` so the window points at Vite's dev server (HMR) instead
 // of the built renderer bundle Express serves in production.
 const devServerUrl = process.env.CASSETTE_ELECTRON_DEV_URL;
